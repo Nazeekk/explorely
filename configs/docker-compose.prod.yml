@@ -1,0 +1,82 @@
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    ports:
+      - "5432:5432"
+    env_file:
+      - dotenv/prod/.env.common
+      - dotenv/prod/.env.postgres
+    volumes:
+      - data_sql:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: microservices_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - dotenv/prod/.env.common
+      - dotenv/prod/.env.rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  auth-service:
+    build: ./users-service
+    container_name: users-service
+    ports:
+      - "3001:3000"
+    env_file:
+      - dotenv/prod/.env.common
+      - dotenv/prod/.env.postgres
+      - dotenv/prod/.env.users
+      - dotenv/prod/.env.rabbitmq
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+  products-service:
+    build: ./example-service
+    container_name: example-service
+    ports:
+      - "3002:3000"
+    env_file:
+      - dotenv/prod/.env.common
+      - dotenv/prod/.env.postgres
+      - dotenv/prod/.env.products
+      - dotenv/prod/.env.rabbitmq
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  orders-service:
+    build: ./orders-service
+    container_name: orders-service
+    ports:
+      - "3003:3000"
+    env_file:
+      - dotenv/prod/.env.common
+      - dotenv/prod/.env.postgres
+      - dotenv/prod/.env.orders
+      - dotenv/prod/.env.rabbitmq
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  data_sql:

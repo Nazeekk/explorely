@@ -1,0 +1,163 @@
+openapi: 3.0.0
+info:
+  title: Example Service API
+  description: Microservice skeleton example documentation
+  version: 1.0.0
+  contact:
+    name: Backend Team
+
+components:
+  schemas:
+    Example:
+      type: object
+      required:
+        - example_varchar
+        - example_decimal
+      properties:
+        example_id:
+          type: integer
+          description: Auto-generated ID
+          example: 1
+        example_varchar:
+          type: string
+          description: A required string field
+          example: "Some title"
+        example_text:
+          type: string
+          description: Optional long text
+          example: "This is a longer description text..."
+        example_decimal:
+          type: number
+          format: float
+          description: A required decimal field
+          example: 99.99
+        example_integer:
+          type: integer
+          description: Optional integer field with default 0
+          example: 10
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp of creation
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Validation Error"
+        details:
+          type: string
+          example: "\"example_varchar\" is required"
+
+tags:
+  - name: Examples
+    description: Operations related to Example entity
+
+paths:
+  /example:
+    get:
+      summary: Get all examples
+      tags: [Examples]
+      description: Retrieve a list of examples with filtering and pagination
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+          description: Max number of items to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+          description: Number of items to skip
+        - in: query
+          name: example_text
+          schema:
+            type: string
+          description: Filter by decimal value (price)
+        - in: query
+          name: example_integer
+          schema:
+            type: integer
+          description: Filter by integer value (stock)
+      responses:
+        200:
+          description: A list of examples
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Example'
+
+    post:
+      summary: Create a new example entry
+      tags: [Examples]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - exampleRequired
+                - exampleObject
+              properties:
+                exampleRequired:
+                  type: string
+                  description: Matches Joi validation
+                exampleOptional:
+                  type: number
+                exampleObject:
+                  type: object
+                  properties:
+                    exampleField:
+                      type: string
+                exampleArray:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        201:
+          description: Created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Example'
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /example/{id}:
+    get:
+      summary: Get an example by ID
+      tags: [Examples]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the example to get
+      responses:
+        200:
+          description: Example data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Example'
+        404:
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

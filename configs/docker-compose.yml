@@ -1,0 +1,81 @@
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    ports:
+      - "5432:5432"
+    env_file:
+      - dotenv/dev/.env.common
+      - dotenv/dev/.env.postgres
+    volumes:
+      - data_sql:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbit:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - dotenv/dev/.env.common
+      - dotenv/dev/.env.rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  gateway:
+    image: nginx:alpine
+    container_name: api_gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - admin
+      - example-service
+
+  admin:
+    build: ../apps/admin
+    container_name: admin
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../apps/admin:/app
+      - /app/node_modules
+    env_file:
+      - ./dotenv/dev/.env.admin
+    command: npm run dev -- --host 0.0.0.0
+
+  example-service:
+    build: ../services/example-service
+    container_name: example-service
+    ports:
+      - "3001:3000"
+    volumes:
+      - ../services/example-service/src:/app/src
+      - ../services/example-service/package.json:/app/package.json
+      - ../services/example-service/tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+    env_file:
+      - ./dotenv/dev/.env.common
+      - ./dotenv/dev/.env.postgres
+      - ./dotenv/dev/.env.example
+      - ./dotenv/dev/.env.rabbitmq
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    command: npm run dev
+
+volumes:
+  data_sql:
